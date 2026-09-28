@@ -1,1 +1,2 @@
-# Proyecto3-Hospital-DataWarehouse-Azure
+# Proyecto 3: Data Warehouse en la Nube – Azure (Streaming/CDC)
+Repositorio oficial para el flujo Medallion (Bronze -> Silver -> Gold) utilizando Azure Data Factory, ADLS Gen2, dbt y Azure Synapse Analytics, conforme a los requerimientos técnicos institucionales[cite: 1].

@@ -1,8 +1,7 @@
 #!/bin/bash
-
 RESOURCE_GROUP="rg-hospital-dw-prod"
 LOCATION="brazilsouth"
-STORAGE_ACCOUNT="sthospital$(date +)"
+STORAGE_ACCOUNT="sthospital$(date +%s)"
 
 echo "1. Creando el Grupo de Recursos..."
 az group create --name "\(RESOURCE_GROUP" --location "\)LOCATION"

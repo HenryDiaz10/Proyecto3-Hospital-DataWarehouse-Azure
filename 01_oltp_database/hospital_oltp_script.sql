@@ -1,30 +1,22 @@
 /* =========================================================
-   HOSPITAL_OLTP - SCRIPT COMPLETO CORREGIDO
+   HOSPITAL_OLTP - SCRIPT ADAPTADO Y COMENTADO PARA AZURE SQL
    ========================================================= */
 
-USE master;
-GO
-
-IF EXISTS (SELECT name FROM sys.databases WHERE name = 'Hospital_OLTP')
-BEGIN
-    ALTER DATABASE Hospital_OLTP SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE Hospital_OLTP;
-END;
-GO
-
-CREATE DATABASE Hospital_OLTP;
-GO
-
-USE Hospital_OLTP;
-GO
+-- Como estamos conectados directamente a la base de datos 'Hospital_OLTP' en Azure,
+-- omitimos 'USE master' y 'CREATE DATABASE' para evitar conflictos de permisos.
 SET NOCOUNT ON;
 
-/* ---------- TABLAS MAESTRAS ---------- */
+/* =========================================================
+   1. CREACIÓN DE TABLAS MAESTRAS (Catálogos y Entidades Base)
+   ========================================================= */
+-- Especialidades médicas del hospital
 CREATE TABLE Especialidades (
     IDEspecialidad INT IDENTITY(1,1) PRIMARY KEY,
     NombreEspecialidad VARCHAR(100) NOT NULL,
     Descripcion VARCHAR(250)
 );
+
+-- Sedes o establecimientos de salud físicos
 CREATE TABLE Sedes (
     IDSede INT IDENTITY(1,1) PRIMARY KEY,
     NombreSede VARCHAR(100) NOT NULL,
@@ -32,13 +24,17 @@ CREATE TABLE Sedes (
     Direccion VARCHAR(200),
     Telefono VARCHAR(15)
 );
+
+-- Salas o consultorios dentro de cada sede
 CREATE TABLE Salas (
-    IDSala INT IDENTITY(1,1) PRIMARY KEY,
+    IDSale INT IDENTITY(1,1) PRIMARY KEY,
     IDSede INT FOREIGN KEY REFERENCES Sedes(IDSede),
     NombreSala VARCHAR(50) NOT NULL,
     Piso INT,
     Capacidad INT DEFAULT 1
 );
+
+-- Personal médico vinculado a una especialidad
 CREATE TABLE Medicos (
     IDMedico INT IDENTITY(1,1) PRIMARY KEY,
     IDEspecialidad INT FOREIGN KEY REFERENCES Especialidades(IDEspecialidad),
@@ -48,6 +44,8 @@ CREATE TABLE Medicos (
     Telefono VARCHAR(15),
     Email VARCHAR(120)
 );
+
+-- Pacientes atendidos en el sistema
 CREATE TABLE Pacientes (
     IDPaciente INT IDENTITY(1,1) PRIMARY KEY,
     DNI VARCHAR(8) UNIQUE NOT NULL,
@@ -59,53 +57,73 @@ CREATE TABLE Pacientes (
     Direccion VARCHAR(200),
     Distrito VARCHAR(80)
 );
+
+-- Entidades aseguradoras de salud
 CREATE TABLE Aseguradoras (
     IDAseguradora INT IDENTITY(1,1) PRIMARY KEY,
     NombreAseguradora VARCHAR(100) NOT NULL
 );
+
+-- Planes de seguro ofrecidos por las aseguradoras con su porcentaje de cobertura
 CREATE TABLE Planes_Seguro (
     IDPlan INT IDENTITY(1,1) PRIMARY KEY,
     IDAseguradora INT FOREIGN KEY REFERENCES Aseguradoras(IDAseguradora),
     NombrePlan VARCHAR(100) NOT NULL,
     PorcentajeCobertura DECIMAL(5,2)
 );
+
+-- Catálogo de servicios médicos disponibles y sus precios base
 CREATE TABLE Catalogo_Servicios (
     IDServicio INT IDENTITY(1,1) PRIMARY KEY,
     NombreServicio VARCHAR(150) NOT NULL,
     PrecioBase DECIMAL(10,2) NOT NULL
 );
+
+-- Medicamentos del inventario hospitalario
 CREATE TABLE Medicamentos (
     IDMedicamento INT IDENTITY(1,1) PRIMARY KEY,
     NombreMedicamento VARCHAR(150) NOT NULL,
     Presentacion VARCHAR(100),
     Precio DECIMAL(10,2) NOT NULL
 );
+
+-- Catálogo internacional de diagnósticos CIE-10
 CREATE TABLE Diagnosticos_CIE10 (
     IDDiagnostico INT IDENTITY(1,1) PRIMARY KEY,
     CodigoCIE10 VARCHAR(10) UNIQUE NOT NULL,
     Descripcion VARCHAR(250) NOT NULL
 );
+GO
 
-/* ---------- TABLAS TRANSACCIONALES ---------- */
+/* =========================================================
+   2. CREACIÓN DE TABLAS TRANSACCIONALES (Operaciones del día a día)
+   ========================================================= */
+-- Registro principal de citas médicas agendadas
 CREATE TABLE Citas (
     IDCita INT IDENTITY(1,1) PRIMARY KEY,
     IDPaciente INT FOREIGN KEY REFERENCES Pacientes(IDPaciente),
     IDMedico INT FOREIGN KEY REFERENCES Medicos(IDMedico),
-    IDSala INT FOREIGN KEY REFERENCES Salas(IDSala),
+    IDSala INT FOREIGN KEY REFERENCES Salas(IDSale),
     FechaHoraCita DATETIME NOT NULL,
-    EstadoCita VARCHAR(20)
+    EstadoCita VARCHAR(20) -- Atendida, Cancelada, No Asistió
 );
+
+-- Diagnósticos y observaciones clínicas resultantes de una cita atendida
 CREATE TABLE Atenciones (
     IDAtencion INT IDENTITY(1,1) PRIMARY KEY,
     IDCita INT FOREIGN KEY REFERENCES Citas(IDCita),
     IDDiagnostico INT FOREIGN KEY REFERENCES Diagnosticos_CIE10(IDDiagnostico),
     Observaciones VARCHAR(500)
 );
+
+-- Cabecera de la receta médica emitida en una atención
 CREATE TABLE Recetas_Cabecera (
     IDReceta INT IDENTITY(1,1) PRIMARY KEY,
     IDAtencion INT FOREIGN KEY REFERENCES Atenciones(IDAtencion),
     FechaEmision DATE NOT NULL
 );
+
+-- Detalle de los medicamentos prescritos en cada receta
 CREATE TABLE Detalle_Recetas (
     IDDetalleReceta INT IDENTITY(1,1) PRIMARY KEY,
     IDReceta INT FOREIGN KEY REFERENCES Recetas_Cabecera(IDReceta),
@@ -113,6 +131,8 @@ CREATE TABLE Detalle_Recetas (
     Cantidad INT NOT NULL,
     Indicaciones VARCHAR(200)
 );
+
+-- Registro de pagos y liquidación financiera de las citas
 CREATE TABLE Facturacion (
     IDFacturacion INT IDENTITY(1,1) PRIMARY KEY,
     IDCita INT FOREIGN KEY REFERENCES Citas(IDCita),
@@ -125,7 +145,9 @@ CREATE TABLE Facturacion (
 );
 GO
 
-/* ---------- MAESTROS ---------- */
+/* =========================================================
+   3. INSERCIÓN DE DATOS MAESTROS ESTÁTICOS
+   ========================================================= */
 INSERT INTO Especialidades (NombreEspecialidad, Descripcion) VALUES
 ('Medicina General','Atención médica integral del paciente adulto'),
 ('Pediatría','Atención médica de niños y adolescentes'),
@@ -192,7 +214,9 @@ INSERT INTO Catalogo_Servicios (NombreServicio, PrecioBase) VALUES
 ('Endoscopía Digestiva Alta',280.00),('Consulta Odontológica',50.00);
 GO
 
-/* ---------- SALAS ---------- */
+/* =========================================================
+   4. GENERACIÓN AUTOMÁTICA DE SALAS (20 consultorios)
+   ========================================================= */
 DECLARE @i INT = 1;
 WHILE @i <= 20 BEGIN
     INSERT INTO Salas (IDSede, NombreSala, Piso, Capacidad)
@@ -201,7 +225,9 @@ WHILE @i <= 20 BEGIN
 END;
 GO
 
-/* ---------- MEDICOS ---------- */
+/* =========================================================
+   5. GENERACIÓN AUTOMÁTICA DE MÉDICOS (50 doctores con nombres aleatorios)
+   ========================================================= */
 DECLARE @NombresMedicos TABLE (Id INT IDENTITY, Nombre VARCHAR(50));
 INSERT INTO @NombresMedicos (Nombre) VALUES
 ('José'),('María'),('Carlos'),('Ana'),('Luis'),('Rosa'),('Juan'),('Carmen'),
@@ -243,7 +269,9 @@ WHILE @iMed <= 50 BEGIN
 END;
 GO
 
-/* ---------- PACIENTES (CORREGIDO) ---------- */
+/* =========================================================
+   6. GENERACIÓN MASIVA DE PACIENTES (5,000 registros)
+   ========================================================= */
 DECLARE @NombresPac TABLE (Id INT IDENTITY, Nombre VARCHAR(50));
 INSERT INTO @NombresPac (Nombre) VALUES
 ('José'),('María'),('Carlos'),('Ana'),('Luis'),('Rosa'),('Juan'),('Carmen'),
@@ -273,7 +301,7 @@ INSERT INTO @Distritos (Nombre) VALUES
 DECLARE @iPac INT = 1;
 DECLARE @idxNombre INT, @idxAp1 INT, @idxAp2 INT, @idxDistrito INT;
 WHILE @iPac <= 5000 BEGIN
-    SET @idxNombre   = (ABS(CHECKSUM(NEWID())) % 40) + 1;
+    SET @idxNombre    = (ABS(CHECKSUM(NEWID())) % 40) + 1;
     SET @idxAp1      = (ABS(CHECKSUM(NEWID())) % 40) + 1;
     SET @idxAp2      = (ABS(CHECKSUM(NEWID())) % 40) + 1;
     SET @idxDistrito = (ABS(CHECKSUM(NEWID())) % 15) + 1;
@@ -295,7 +323,9 @@ WHILE @iPac <= 5000 BEGIN
 END;
 GO
 
-/* ---------- CITAS (100,000) ---------- */
+/* =========================================================
+   7. GENERACIÓN MASIVA DE CITAS MÉDICAS (100,000 registros)
+   ========================================================= */
 DECLARE @contadorCitas INT = 1;
 DECLARE @idPaciente INT, @idMedico INT, @idSala INT, @diasAleatorios INT;
 DECLARE @estados TABLE (Estado VARCHAR(20));
@@ -317,7 +347,10 @@ BEGIN
 END;
 GO
 
-/* ---------- ATENCIONES (80,000) ---------- */
+/* =========================================================
+   8. GENERACIÓN MASIVA DE ATENCIONES CLÍNICAS (80,000 registros)
+   ========================================================= */
+-- Selecciona de manera aleatoria 80,000 citas que tuvieron estado 'Atendida'
 INSERT INTO Atenciones (IDCita, IDDiagnostico, Observaciones)
 SELECT TOP 80000
     c.IDCita,
@@ -328,10 +361,13 @@ WHERE c.EstadoCita = 'Atendida'
 ORDER BY c.IDCita;
 GO
 
-/* ---------- FACTURACION (80,000) ---------- */
+/* =========================================================
+   9. GENERACIÓN MASIVA DE FACTURACIÓN (80,000 registros mediante Cursor)
+   ========================================================= */
 DECLARE @idCitaF INT, @fechaCitaF DATETIME, @idxPlanF INT, @metodoF VARCHAR(30);
 DECLARE @subtotalF DECIMAL(10,2), @coberturaF DECIMAL(5,2), @fechaPagoF DATETIME;
 
+-- Recorre las 80,000 citas atendidas para generar sus registros de pago correspondientes
 DECLARE cursorCitas CURSOR FOR
     SELECT TOP 80000 IDCita, FechaHoraCita
     FROM Citas
@@ -365,7 +401,42 @@ CLOSE cursorCitas;
 DEALLOCATE cursorCitas;
 GO
 
-/* ---------- VERIFICACIÓN ---------- */
+/* =========================================================
+   10. ACTIVACIÓN DE CDC NATIVO (Change Data Capture)
+       Requisito clave de la arquitectura para extracción incremental
+   ========================================================= */
+
+-- Habilita la característica de CDC a nivel de toda la Base de Datos
+EXEC sys.sp_cdc_enable_db;
+GO
+
+-- Habilita el monitoreo de cambios (CDC) en la tabla 'Pacientes'
+EXEC sys.sp_cdc_enable_table
+    @source_schema = N'dbo',
+    @source_name   = N'Pacientes',
+    @role_name     = NULL,
+    @supports_net_changes = 1;
+GO
+
+-- Habilita el monitoreo de cambios (CDC) en la tabla 'Citas'
+EXEC sys.sp_cdc_enable_table
+    @source_schema = N'dbo',
+    @source_name   = N'Citas',
+    @role_name     = NULL,
+    @supports_net_changes = 1;
+GO
+
+-- Habilita el monitoreo de cambios (CDC) en la tabla 'Facturacion'
+EXEC sys.sp_cdc_enable_table
+    @source_schema = N'dbo',
+    @source_name   = N'Facturacion',
+    @role_name     = NULL,
+    @supports_net_changes = 1;
+GO
+
+/* =========================================================
+   11. CONSULTA DE VERIFICACIÓN FINAL (Muestra el conteo por tabla)
+   ========================================================= */
 SELECT 'Especialidades' AS Tabla, COUNT(*) AS Filas FROM Especialidades
 UNION ALL SELECT 'Sedes', COUNT(*) FROM Sedes
 UNION ALL SELECT 'Salas', COUNT(*) FROM Salas

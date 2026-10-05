@@ -22,5 +22,7 @@ models:
   hospital_dw_project:
     silver:
       +materialized: incremental
+      +schema: silver
     gold:
       +materialized: table
+      +schema: gold

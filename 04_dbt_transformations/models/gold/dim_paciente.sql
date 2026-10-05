@@ -1,3 +1,4 @@
+{{ config(schema='gold') }}
 {{
     config(
         materialized='table'

@@ -2,9 +2,9 @@ version: 2
 
 sources:
   - name: bronze
-    database: "Hospital_OLTP"
+    database: "SQLPoolHospital"
     schema: "dbo"
     tables:
-      - name: Pacientes     
-      - name: Citas          
-      - name: Facturacion    
+      - name: pacientes
+      - name: citas
+      - name: facturacion

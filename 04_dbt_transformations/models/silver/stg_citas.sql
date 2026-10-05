@@ -1,19 +1,21 @@
 {{
     config(
         materialized='incremental',
-        unique_key='IDCita'
+        incremental_strategy='merge',
+        unique_key='IDCita',
+        dist='HASH(IDCita)'
     )
 }}
 
-SELECT
+SELECT 
     IDCita,
     IDPaciente,
     IDMedico,
     IDSala,
     FechaHoraCita,
     EstadoCita
-FROM {{ source('bronze', 'Citas') }}
+FROM {{ source('bronze', 'citas') }}
 
 {% if is_incremental() %}
-  WHERE FechaHoraCita >= (SELECT COALESCE(MAX(FechaHoraCita), '1900-01-01') FROM {{ this }})
+WHERE FechaHoraCita >= (SELECT COALESCE(MAX(FechaHoraCita), '1900-01-01') FROM {{ this }})
 {% endif %}

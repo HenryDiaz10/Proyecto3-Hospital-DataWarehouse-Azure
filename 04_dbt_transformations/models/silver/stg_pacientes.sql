@@ -1,11 +1,13 @@
 {{
     config(
         materialized='incremental',
-        unique_key='IDPaciente'
+        incremental_strategy='merge',
+        unique_key='IDPaciente',
+        dist='HASH(IDPaciente)'
     )
 }}
 
-SELECT
+SELECT 
     IDPaciente,
     DNI,
     Nombres,
@@ -15,8 +17,8 @@ SELECT
     Telefono,
     Direccion,
     Distrito
-FROM {{ source('bronze', 'Pacientes') }}
+FROM {{ source('bronze', 'pacientes') }}
 
 {% if is_incremental() %}
-  WHERE IDPaciente  (SELECT COALESCE(MAX(IDPaciente), 0) FROM {{ this }})
+WHERE IDPaciente >= (SELECT COALESCE(MAX(IDPaciente), 0) FROM {{ this }})
 {% endif %}

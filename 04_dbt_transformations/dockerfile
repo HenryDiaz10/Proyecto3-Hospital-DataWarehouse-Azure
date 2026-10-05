@@ -1,0 +1,26 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar dependencias básicas y registrar la llave de Microsoft correctamente
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
+    curl \
+    gnupg \
+    unixodbc \
+    unixodbc-dev \
+    ca-certificates \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/app
+
+# Instalar dbt-core, el adaptador de sqlserver y mssql-python
+RUN pip install --no-cache-dir dbt-core dbt-sqlserver mssql-python
+
+CMD ["dbt", "--version"]

@@ -1,0 +1,26 @@
+name: 'hospital_dw_project'
+version: '1.0.0'
+config-version: 2
+
+# Esto le indica a dbt qué perfil usar del archivo profiles.yml
+profile: 'hospital_dw_project'
+
+# Directorios principales de tu proyecto dbt
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Configuración de modelos para tus capas (Silver y Gold)
+models:
+  hospital_dw_project:
+    silver:
+      +materialized: incremental
+    gold:
+      +materialized: table
